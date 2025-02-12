@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+
+  db:
+    image: timescale/timescaledb:latest-pg15
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=truckdb
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/truckdb
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - db
+      - redis
+
+  simulator:
+    build: ./simulator
+    depends_on:
+      - backend
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_BACKEND_URL=ws://localhost:8000/ws
+      - REACT_APP_MAPBOX_TOKEN=${MAPBOX_ACCESS_TOKEN}
+    depends_on:
+      - backend
+
+volumes:
+  redis-data:
+  postgres-data:
